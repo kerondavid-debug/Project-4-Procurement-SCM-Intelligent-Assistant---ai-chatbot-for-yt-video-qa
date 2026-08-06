@@ -37,7 +37,7 @@ def init_clients():
             collection.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
 
     return client, collection
-
+client, collection = init_clients()
 
 def embed_text(text: str) -> list[float]:
     response = client.embeddings.create(model="text-embedding-3-small", input=text)
