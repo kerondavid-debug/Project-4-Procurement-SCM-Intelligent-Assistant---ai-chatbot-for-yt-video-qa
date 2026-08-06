@@ -1,10 +1,7 @@
 import streamlit as st
-from dotenv import load_dotenv
 import json
 import chromadb
 from openai import OpenAI
-
-load_dotenv()
 
 st.set_page_config(page_title="Procurement Intelligence Assistant", page_icon="📦")
 
