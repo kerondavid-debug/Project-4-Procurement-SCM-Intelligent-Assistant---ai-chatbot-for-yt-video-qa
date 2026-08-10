@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import chromadb
 from openai import OpenAI
+import io
 
 st.set_page_config(page_title="Procurement Intelligence Assistant", page_icon="📦")
 
@@ -42,6 +43,15 @@ client, collection = init_clients()
 def embed_text(text: str) -> list[float]:
     response = client.embeddings.create(model="text-embedding-3-small", input=text)
     return response.data[0].embedding
+
+
+def transcribe_audio(audio_file) -> str:
+    """Transcribe an uploaded audio file to text using OpenAI Whisper API."""
+    transcript = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file
+    )
+    return transcript.text
 
 
 def answer_question_with_memory(question: str, history: list, n_results: int = 4) -> dict:
@@ -103,9 +113,15 @@ for msg in st.session_state.messages:
                         f"- [{s['title']} ({s['start']:.0f}s)]"
                         f"(https://youtube.com/watch?v={s['video_id']}&t={int(s['start'])})"
                     )
+# Voice input
+audio_file = st.file_uploader("Or ask by voice 🎤", type=["wav", "mp3", "m4a"])
+voice_question = None
+if audio_file is not None:
+    with st.spinner("Transcribing..."):
+        voice_question = transcribe_audio(audio_file)
 
 # Chat input
-if question := st.chat_input("Ask a procurement or supply chain question..."):
+if question := (st.chat_input("Ask a procurement or supply chain question...") or voice_question):
     st.session_state.messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
         st.markdown(question)
@@ -117,8 +133,8 @@ if question := st.chat_input("Ask a procurement or supply chain question..."):
             with st.expander("Sources"):
                 for s in result["sources"]:
                     st.markdown(
-                        f"- [{s['title']} ({s['start']:.0f}s)]"
-                        f"(https://youtube.com/watch?v={s['video_id']}&t={int(s['start'])})"
+                        f"- [{s['title']}] ({s['start']:.0f}s)]"
+                        f"(https://www.youtube.com/watch?v={s['video_id']}&t={int(s['start'])})"
                     )
 
     st.session_state.messages.append({
