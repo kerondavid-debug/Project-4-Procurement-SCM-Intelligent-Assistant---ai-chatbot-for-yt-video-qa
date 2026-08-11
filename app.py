@@ -265,6 +265,7 @@ def handle_question(question: str):
                 answer = result["output"]
                 if not result.get("intermediate_steps"):
                     answer = "(General knowledge — not sourced from the video library.)\n\n" + answer
+                st.write("DEBUG steps:", [step[0].tool for step in result.get("intermediate_steps", [])])
             except Exception as e:
                 traceback.print_exc()
                 answer = f"Sorry, something went wrong answering that: {e}"
