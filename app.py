@@ -1,5 +1,6 @@
 import json
 import os
+import traceback
 
 import streamlit as st
 import chromadb
@@ -249,6 +250,7 @@ def handle_question(question: str):
                 })
                 answer = result["output"]
             except Exception as e:
+                traceback.print_exc()
                 answer = f"Sorry, something went wrong answering that: {e}"
 
             st.markdown(answer)
@@ -259,27 +261,7 @@ def handle_question(question: str):
     st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
     st.session_state.chat_history.append(HumanMessage(content=question))
     st.session_state.chat_history.append(AIMessage(content=answer))
-    st.session_state.messages.append({"role": "user", "content": question})
-    with st.chat_message("user"):
-        st.markdown(question)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            try:
-                result = agent_executor.invoke({
-                    "input": question,
-                    "chat_history": st.session_state.chat_history,
-                })
-                answer = result["output"]
-            except Exception as e:
-                answer = f"Sorry, something went wrong answering that: {e}"
-
-            st.markdown(answer)
-
-    st.session_state.messages.append({"role": "assistant", "content": answer})
-    st.session_state.chat_history.append(HumanMessage(content=question))
-    st.session_state.chat_history.append(AIMessage(content=answer))
-
+   
 
 # Render past messages
 for msg in st.session_state.messages:
