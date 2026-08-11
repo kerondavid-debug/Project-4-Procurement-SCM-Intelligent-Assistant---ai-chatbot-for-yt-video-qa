@@ -252,6 +252,7 @@ def handle_question(question: str):
                     "chat_history": st.session_state.chat_history,
                 })
                 answer = result["output"]
+                st.write("DEBUG intermediate_steps:", result.get("intermediate_steps"))
             except Exception as e:
                 traceback.print_exc()
                 answer = f"Sorry, something went wrong answering that: {e}"
