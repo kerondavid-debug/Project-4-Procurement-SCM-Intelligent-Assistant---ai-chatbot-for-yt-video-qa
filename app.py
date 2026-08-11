@@ -87,18 +87,18 @@ def build_agent(_client, _collection, _video_index):
         return response.data[0].embedding
 
     # --- Tool 1: video content search (RAG over transcript chunks) ---
-def retrieve_video_content(query: str) -> str:
-    results = _collection.query(query_embeddings=[embed_text(query)], n_results=4)
-    docs = results["documents"][0]
-    metas = results["metadatas"][0]
+    def retrieve_video_content(query: str) -> str:
+        results = _collection.query(query_embeddings=[embed_text(query)], n_results=4)
+        docs = results["documents"][0]
+        metas = results["metadatas"][0]
 
-    # Stash structured sources for the UI to render after the agent finishes —
-    # the agent only sees/returns the text below, not this list.
-    st.session_state.last_sources = metas
+        # Stash structured sources for the UI to render after the agent finishes —
+        # the agent only sees/returns the text below, not this list.
+        st.session_state.last_sources = metas
 
-    return "\n\n".join(
-        f"[Source: {m['title']} at {m['start']:.0f}s]\n{d}" for d, m in zip(docs, metas)
-    )
+        return "\n\n".join(
+            f"[Source: {m['title']} at {m['start']:.0f}s]\n{d}" for d, m in zip(docs, metas)
+        )
 
     video_retrieval_tool = Tool(
         name="video_content_search",
@@ -192,10 +192,10 @@ def retrieve_video_content(query: str) -> str:
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     agent = create_tool_calling_agent(llm, tools, prompt)
     executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
-    st.write(f"DEBUG: build_agent about to return, executor type = {type(executor)}")
     return executor
 
-
+    
+    
 def transcribe_audio(client: OpenAI, audio_file) -> str:
     transcript = client.audio.transcriptions.create(model="whisper-1", file=audio_file)
     return transcript.text
@@ -223,15 +223,6 @@ try:
 except Exception as e:
     st.error(f"Failed to initialize the assistant: {e}")
     st.stop()
-
-# --- TEMPORARY DEBUG CHECK ---
-if agent_executor is None:
-    st.error("agent_executor is None right after build_agent() — check build_agent's return path.")
-    st.stop()
-else:
-    st.write(f"DEBUG: agent_executor type = {type(agent_executor)}")
-# --- END DEBUG ---
-
 
 st.title("📦 Procurement_SCM_Intelligence Assistant")
 st.caption(
