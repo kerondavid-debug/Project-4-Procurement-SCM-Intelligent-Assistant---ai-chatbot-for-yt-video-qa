@@ -200,7 +200,7 @@ def build_agent(_client, _collection, _video_index):
         MessagesPlaceholder("agent_scratchpad"),
     ])
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0).bind(tool_choice="required")
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     agent = create_tool_calling_agent(llm, tools, prompt)
     executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
     return executor
@@ -263,7 +263,8 @@ def handle_question(question: str):
                     "chat_history": st.session_state.chat_history,
                 })
                 answer = result["output"]
-                st.write("DEBUG intermediate_steps:", result.get("intermediate_steps"))
+                if not result.get("intermediate_steps"):
+                    answer = "(General knowledge — not sourced from the video library.)\n\n" + answer
             except Exception as e:
                 traceback.print_exc()
                 answer = f"Sorry, something went wrong answering that: {e}"
