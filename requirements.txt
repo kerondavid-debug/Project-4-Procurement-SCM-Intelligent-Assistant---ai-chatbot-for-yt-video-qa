@@ -1,4 +1,8 @@
 streamlit
 chromadb
 openai
+langchain
+langchain-openai
+langchain-core
 tiktoken
+python-dotenv
