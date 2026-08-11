@@ -86,13 +86,18 @@ def build_agent(_client, _collection, _video_index):
         return response.data[0].embedding
 
     # --- Tool 1: video content search (RAG over transcript chunks) ---
-    def retrieve_video_content(query: str) -> str:
-        results = _collection.query(query_embeddings=[embed_text(query)], n_results=4)
-        docs = results["documents"][0]
-        metas = results["metadatas"][0]
-        return "\n\n".join(
-            f"[Source: {m['title']} at {m['start']:.0f}s]\n{d}" for d, m in zip(docs, metas)
-        )
+def retrieve_video_content(query: str) -> str:
+    results = _collection.query(query_embeddings=[embed_text(query)], n_results=4)
+    docs = results["documents"][0]
+    metas = results["metadatas"][0]
+
+    # Stash structured sources for the UI to render after the agent finishes —
+    # the agent only sees/returns the text below, not this list.
+    st.session_state.last_sources = metas
+
+    return "\n\n".join(
+        f"[Source: {m['title']} at {m['start']:.0f}s]\n{d}" for d, m in zip(docs, metas)
+    )
 
     video_retrieval_tool = Tool(
         name="video_content_search",
@@ -236,6 +241,30 @@ def handle_question(question: str):
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
+            st.session_state.last_sources = []  # reset before each query
+            try:
+                result = agent_executor.invoke({
+                    "input": question,
+                    "chat_history": st.session_state.chat_history,
+                })
+                answer = result["output"]
+            except Exception as e:
+                answer = f"Sorry, something went wrong answering that: {e}"
+
+            st.markdown(answer)
+            sources = st.session_state.last_sources
+            if sources:
+                render_sources(sources)
+
+    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
+    st.session_state.chat_history.append(HumanMessage(content=question))
+    st.session_state.chat_history.append(AIMessage(content=answer))
+    st.session_state.messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.markdown(question)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
             try:
                 result = agent_executor.invoke({
                     "input": question,
@@ -256,6 +285,8 @@ def handle_question(question: str):
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg.get("sources"):
+            render_sources(msg["sources"])
 
 # Voice input
 audio_file = st.file_uploader("Or ask by voice 🎤", type=["wav", "mp3", "m4a"])
