@@ -202,7 +202,7 @@ def build_agent(_client, _collection, _video_index):
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     agent = create_tool_calling_agent(llm, tools, prompt)
-    executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
+    executor = AgentExecutor(agent=agent, tools=tools, verbose=False, return_intermediate_steps=True)
     return executor
 
     
