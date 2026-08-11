@@ -221,7 +221,16 @@ except Exception as e:
     st.error(f"Failed to initialize the assistant: {e}")
     st.stop()
 
-st.title("📦 Procurement Intelligence Assistant")
+# --- TEMPORARY DEBUG CHECK ---
+if agent_executor is None:
+    st.error("agent_executor is None right after build_agent() — check build_agent's return path.")
+    st.stop()
+else:
+    st.write(f"DEBUG: agent_executor type = {type(agent_executor)}")
+# --- END DEBUG ---
+
+
+st.title("📦 Procurement_SCM_Intelligence Assistant")
 st.caption(
     "Ask questions about procurement, sourcing, and supply chain management — "
     "answers are grounded in a curated set of expert video content, with a "
