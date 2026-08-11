@@ -200,7 +200,7 @@ def build_agent(_client, _collection, _video_index):
         MessagesPlaceholder("agent_scratchpad"),
     ])
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0).bind(tool_choice="required")
     agent = create_tool_calling_agent(llm, tools, prompt)
     executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
     return executor
