@@ -214,9 +214,13 @@ def render_sources(sources):
 # --------------------------------------------------------------------------
 # App setup / state
 # --------------------------------------------------------------------------
+import inspect
+st.write(f"DEBUG: build_agent defined in {inspect.getsourcefile(build_agent)}")
+
 try:
     client, collection, video_index = init_clients()
     agent_executor = build_agent(client, collection, video_index)
+
 except Exception as e:
     st.error(f"Failed to initialize the assistant: {e}")
     st.stop()
