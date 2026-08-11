@@ -191,7 +191,9 @@ def retrieve_video_content(query: str) -> str:
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     agent = create_tool_calling_agent(llm, tools, prompt)
-    return AgentExecutor(agent=agent, tools=tools, verbose=False)
+    executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
+    st.write(f"DEBUG: build_agent about to return, executor type = {type(executor)}")
+    return executor
 
 
 def transcribe_audio(client: OpenAI, audio_file) -> str:
@@ -214,9 +216,6 @@ def render_sources(sources):
 # --------------------------------------------------------------------------
 # App setup / state
 # --------------------------------------------------------------------------
-import inspect
-st.write(f"DEBUG: build_agent defined in {inspect.getsourcefile(build_agent)}")
-
 try:
     client, collection, video_index = init_clients()
     agent_executor = build_agent(client, collection, video_index)
