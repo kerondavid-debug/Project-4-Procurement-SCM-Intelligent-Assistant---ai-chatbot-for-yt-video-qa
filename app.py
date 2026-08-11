@@ -263,9 +263,10 @@ def handle_question(question: str):
                     "chat_history": st.session_state.chat_history,
                 })
                 answer = result["output"]
-                if not result.get("intermediate_steps"):
+                steps = result.get("intermediate_steps", [])
+                tools_used = [step[0].tool for step in steps]
+                if not steps or "general_procurement_knowledge" in tools_used:
                     answer = "(General knowledge — not sourced from the video library.)\n\n" + answer
-                st.write("DEBUG steps:", [step[0].tool for step in result.get("intermediate_steps", [])])
             except Exception as e:
                 traceback.print_exc()
                 answer = f"Sorry, something went wrong answering that: {e}"
