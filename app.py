@@ -309,7 +309,9 @@ def handle_question(question: str):
                     else:
                         joined = ", ".join(parts[:-1]) + ", and " + parts[-1]
                     label = f"(This answer combines {joined}.)"
-                elif used_general and not used_content and not used_metadata:
+                elif used_metadata:
+                    label = "(Sourced from the video library's metadata — titles and topics, not transcript content.)"
+                elif used_general:
                     label = "(General knowledge — not sourced from the video library.)"
                 else:
                     label = None
