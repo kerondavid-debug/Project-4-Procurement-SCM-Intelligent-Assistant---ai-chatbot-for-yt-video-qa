@@ -291,15 +291,25 @@ def handle_question(question: str):
                 steps = result.get("intermediate_steps", [])
                 tools_used = set(step[0].tool for step in steps)
 
-                used_video = "video_content_search" in tools_used
+                used_content = bool(st.session_state.last_sources)
+                used_metadata = "video_library_metadata" in tools_used
                 used_general = "general_procurement_knowledge" in tools_used or not steps
 
-                if used_video and used_general:
-                    label = (
-                        "*(This answer combines content from the video library "
-                        "with general knowledge not sourced from the videos.)*"
-                    )
-                elif used_general:
+                parts = []
+                if used_content:
+                    parts.append("video content")
+                if used_metadata:
+                    parts.append("video metadata library")
+                if used_general:
+                    parts.append("general knowledge")
+
+                if len(parts) > 1:
+                    if len(parts) == 2:
+                        joined = " and ".join(parts)
+                    else:
+                        joined = ", ".join(parts[:-1]) + ", and " + parts[-1]
+                    label = f"(This answer combines {joined}.)"
+                elif used_general and not used_content and not used_metadata:
                     label = "(General knowledge — not sourced from the video library.)"
                 else:
                     label = None
