@@ -147,9 +147,14 @@ def build_agent(_client, _collection, _video_index):
                     "content": (
                         "You are a procurement and supply chain management "
                         "assistant. Answer using your general knowledge of "
-                        "the field. Be clear and concise. Note at the start "
-                        "of your answer that this is general knowledge, not "
-                        "sourced from the video library."
+                        "the field. Be clear, concise, and write in plain "
+                        "prose rather than a numbered/bulleted breakdown "
+                        "unless the question specifically asks for a list — "
+                        "this keeps general-knowledge answers visually "
+                        "distinct from video-sourced ones, which use "
+                        "structured citations. Do not add your own "
+                        "disclaimer about the source; the app adds that "
+                        "label separately."
                     ),
                 },
                 {"role": "user", "content": query},
