@@ -289,9 +289,23 @@ def handle_question(question: str):
                 })
                 answer = result["output"]
                 steps = result.get("intermediate_steps", [])
-                tools_used = [step[0].tool for step in steps]
-                if not steps or "general_procurement_knowledge" in tools_used:
-                    answer = "(General knowledge — not sourced from the video library.)\n\n" + answer
+                tools_used = set(step[0].tool for step in steps)
+
+                used_video = "video_content_search" in tools_used
+                used_general = "general_procurement_knowledge" in tools_used or not steps
+
+                if used_video and used_general:
+                    label = (
+                        "*(This answer combines content from the video library "
+                        "with general knowledge not sourced from the videos.)*"
+                    )
+                elif used_general:
+                    label = "(General knowledge — not sourced from the video library.)"
+                else:
+                    label = None
+
+                if label:
+                    answer = f"{label}\n\n{answer}"
             except Exception as e:
                 traceback.print_exc()
                 answer = f"Sorry, something went wrong answering that: {e}"
