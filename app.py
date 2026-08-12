@@ -87,14 +87,39 @@ def build_agent(_client, _collection, _video_index):
         return response.data[0].embedding
 
     # --- Tool 1: video content search (RAG over transcript chunks) ---
+    RELEVANCE_THRESHOLD = 0.45  # cosine distance — lower is more similar; tune based on testing
+
     def retrieve_video_content(query: str) -> str:
-        results = _collection.query(query_embeddings=[embed_text(query)], n_results=4)
+        results = _collection.query(
+            query_embeddings=[embed_text(query)],
+            n_results=4,
+            include=["documents", "metadatas", "distances"],
+        )
         docs = results["documents"][0]
         metas = results["metadatas"][0]
+        distances = results["distances"][0]
+
+        # Keep only chunks that are actually close enough to be relevant —
+        # otherwise Chroma always returns its top-4 nearest neighbors even
+        # when none of them are a good match, which was causing the agent
+        # to treat weak matches as "found" instead of falling back cleanly.
+        relevant = [
+            (d, m) for d, m, dist in zip(docs, metas, distances)
+            if dist <= RELEVANCE_THRESHOLD
+        ]
+
+        if not relevant:
+            st.session_state.last_sources = []
+            return (
+                "No sufficiently relevant content found in the video library "
+                "for this query. Use general_procurement_knowledge instead."
+            )
+
+        docs, metas = zip(*relevant)
 
         # Stash structured sources for the UI to render after the agent finishes —
         # the agent only sees/returns the text below, not this list.
-        st.session_state.last_sources = metas
+        st.session_state.last_sources = list(metas)
 
         return "\n\n".join(
             f"[Source: {m['title']} at {m['start']:.0f}s]\n{d}" for d, m in zip(docs, metas)
@@ -202,7 +227,7 @@ def build_agent(_client, _collection, _video_index):
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     agent = create_tool_calling_agent(llm, tools, prompt)
-    executor = AgentExecutor(agent=agent, tools=tools, verbose=False, return_intermediate_steps=True)
+    executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True)
     return executor
 
     
