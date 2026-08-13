@@ -4,5 +4,8 @@ openai
 langchain==0.2.17
 langchain-openai==0.1.25
 langchain-core==0.2.43
+langsmith>=0.1.130,<0.2
 tiktoken
 python-dotenv
+cohere>=5.0,<6
+rank-bm25>=0.2.2,<0.3
