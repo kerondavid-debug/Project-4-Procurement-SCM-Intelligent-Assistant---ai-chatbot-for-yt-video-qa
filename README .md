@@ -102,7 +102,7 @@ python langsmith_eval.py
 ```
 app.py                          # Streamlit app — deployed entry point
 langsmith_eval.py               # LangSmith evaluation harness
-Procurement_SCM_assistant.ipynb # MVP notebook — chunking, embedding, agent build, sanity checks
+Procurement_SCM_assistant.ipynb # Notebook — chunking, embedding, agent build, sanity checks
 eval_set.json                   # 25-case fixed evaluation dataset
 data/chunks.json                # processed transcript chunks (source for both app and eval)
 requirements.txt
