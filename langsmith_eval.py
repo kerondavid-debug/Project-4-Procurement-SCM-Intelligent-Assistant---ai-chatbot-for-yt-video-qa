@@ -152,10 +152,12 @@ def build_agent(client: OpenAI, collection):
     # BM25 index over the same chunks Chroma was built from — mirrors
     # app.py's hybrid search. Pure embedding search can miss exact-phrase /
     # proper-noun matches a keyword search catches directly.
-    RERANK_THRESHOLD = 0.3
+    RERANK_THRESHOLD = 0.4      # raised from 0.3 — see app.py for rationale
+    # (weak keyword-only BM25 matches were passing the rerank filter)
     EMBED_TOP_K = 15
     BM25_TOP_K = 15
-    FINAL_TOP_K = 6
+    FINAL_TOP_K = 8  # raised from 6 — see app.py for rationale (framing/
+    # intro chunks were being crowded out by topic-specific chunks)
 
     with open("data/chunks.json") as f:
         all_chunks = json.load(f)
@@ -373,7 +375,14 @@ def build_agent(client: OpenAI, collection):
         "so explicitly rather than filling the gap yourself; call "
         "general_procurement_knowledge for that instead, and make clear "
         "in your answer which parts came from the video versus general "
-        "knowledge."
+        "knowledge.\n"
+        "6. If the question's phrasing implies a specific number of steps, "
+        "stages, or items (e.g. 'the 6 stages of X') but the retrieved "
+        "excerpts show a different actual count or structure, report what "
+        "the video actually says as the primary answer — do not invent or "
+        "default to a generic framework that matches the number implied by "
+        "the question. It's fine, and preferred, to note the mismatch "
+        "explicitly (e.g. 'the video actually describes N stages, not 6')."
     )
 
     prompt = ChatPromptTemplate.from_messages([
@@ -576,11 +585,13 @@ def main():
         evaluators=[routing_evaluator, source_evaluator, refusal_evaluator, correctness_evaluator],
         experiment_prefix="procurement-scm",
         description="Routing, retrieval, refusal, and correctness eval against the fixed test set.",
-        num_repetitions=5,  # 24 examples x 5 = 120 runs; separates a real,
-        # consistent bug from one-off model/judge variance (temperature=0
-        # reduces but doesn't eliminate non-determinism, and the evaluators
-        # are themselves LLM calls with the same property). Costs ~5x a
-        # single pass in time and OpenAI usage.
+        num_repetitions=1,  # 25 examples x 1 = 25 runs. Dropped from 3 for
+        # fast fix-iteration cycles now that routing/source/refusal are
+        # confirmed stable at 100% across prior 3x/5x runs. Before calling
+        # a fix (e.g. the video-21/video-25 threshold + prompt changes)
+        # done, re-run just those specific cases at num_repetitions=3 to
+        # rule out one-off luck — don't ship on a single green pass at a
+        # changed threshold.
         max_concurrency=2,  # kept low deliberately: a Cohere Trial key is
         # capped at 10 rerank calls/minute, and high concurrency here is
         # what caused a live 429 mid-run. The rate-limiter above is the

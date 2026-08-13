@@ -108,11 +108,17 @@ def build_agent(_client, _collection, _video_index, _chunks):
     RELEVANCE_THRESHOLD = 0.45  # cosine distance fallback, used only when
     # Cohere reranking isn't configured (no COHERE_API_KEY) — same
     # embeddings-only filtering as before.
-    RERANK_THRESHOLD = 0.3      # Cohere relevance score (0-1) when reranking
-    # is available. Tune based on testing; 0.3 is a permissive default.
+    RERANK_THRESHOLD = 0.4      # Cohere relevance score (0-1) when reranking
+    # is available. Raised from 0.3 after eval showed low-relevance chunks
+    # (e.g. a contract-management chunk) bleeding into unrelated answers
+    # (procurement-stages question, video-25) — 0.3 was letting weak
+    # keyword-only BM25 matches through the rerank filter.
     EMBED_TOP_K = 15
     BM25_TOP_K = 15
-    FINAL_TOP_K = 6
+    FINAL_TOP_K = 8  # was 6 — widened so framing/intro chunks (e.g. a
+    # video's "lifecycle" overview segment) aren't crowded out by more
+    # keyword-dense chunks on the specific sub-topic asked about
+    # (video-08: risk contingency answer missed the lifecycle framing).
 
     # Cohere Trial keys are capped at 10 API calls/minute. A single
     # interactive user is unlikely to hit that, but a retry-with-backoff
@@ -360,7 +366,14 @@ def build_agent(_client, _collection, _video_index, _chunks):
         "so explicitly rather than filling the gap yourself; call "
         "general_procurement_knowledge for that instead, and make clear "
         "in your answer which parts came from the video versus general "
-        "knowledge."
+        "knowledge.\n"
+        "6. If the question's phrasing implies a specific number of steps, "
+        "stages, or items (e.g. 'the 6 stages of X') but the retrieved "
+        "excerpts show a different actual count or structure, report what "
+        "the video actually says as the primary answer — do not invent or "
+        "default to a generic framework that matches the number implied by "
+        "the question. It's fine, and preferred, to note the mismatch "
+        "explicitly (e.g. 'the video actually describes N stages, not 6')."
     )
 
     prompt = ChatPromptTemplate.from_messages([
