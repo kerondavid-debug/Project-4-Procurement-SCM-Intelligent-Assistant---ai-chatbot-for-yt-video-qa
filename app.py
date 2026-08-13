@@ -1,6 +1,8 @@
 import json
 import os
 import re
+import threading
+import time
 import traceback
 
 from dotenv import load_dotenv
@@ -112,6 +114,34 @@ def build_agent(_client, _collection, _video_index, _chunks):
     BM25_TOP_K = 15
     FINAL_TOP_K = 6
 
+    # Cohere Trial keys are capped at 10 API calls/minute. A single
+    # interactive user is unlikely to hit that, but a retry-with-backoff
+    # costs nothing when unused and prevents a stray 429 from crashing a
+    # question outright (confirmed happening under concurrent load in
+    # langsmith_eval.py — same rerank endpoint, same limit).
+    _cohere_rate_lock = threading.Lock()
+    _cohere_last_call_time = [0.0]
+    _COHERE_MIN_INTERVAL = 6.5
+
+    def _rerank_with_rate_limit(cohere_client, **kwargs):
+        max_retries = 4
+        for attempt in range(max_retries):
+            with _cohere_rate_lock:
+                wait = _COHERE_MIN_INTERVAL - (time.time() - _cohere_last_call_time[0])
+                if wait > 0:
+                    time.sleep(wait)
+                try:
+                    result = cohere_client.rerank(**kwargs)
+                    _cohere_last_call_time[0] = time.time()
+                    return result
+                except Exception as e:
+                    _cohere_last_call_time[0] = time.time()
+                    is_rate_limit = "429" in str(e) or "TooManyRequests" in type(e).__name__
+                    if is_rate_limit and attempt < max_retries - 1:
+                        time.sleep(15)
+                        continue
+                    raise
+
     # BM25 index over the same chunks Chroma was built from. Pure embedding
     # search can miss exact-phrase / proper-noun matches (e.g. a tool name
     # like "Icertis") that a keyword-based search catches directly — hybrid
@@ -188,7 +218,8 @@ def build_agent(_client, _collection, _video_index, _chunks):
             )
 
         docs_text = [d for d, _ in candidate_list]
-        rerank_resp = _cohere_client.rerank(
+        rerank_resp = _rerank_with_rate_limit(
+            _cohere_client,
             model="rerank-english-v3.0",
             query=query,
             documents=docs_text,

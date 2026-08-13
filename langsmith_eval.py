@@ -29,6 +29,7 @@ import json
 import os
 import re
 import threading
+import time
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -56,6 +57,36 @@ except ImportError:
 
 RELEVANCE_THRESHOLD = 0.45  # must match app.py
 DATASET_NAME = "procurement-scm-eval"
+
+# Cohere Trial keys are capped at 10 API calls/minute. evaluate() runs
+# examples concurrently, so without this, several rerank() calls fire
+# near-simultaneously across worker threads and blow through that limit —
+# confirmed via a live 429 TooManyRequestsError mid-run. This lock+sleep
+# pattern serializes rerank calls across all threads and enforces a
+# minimum gap between them, safely under the limit (6.5s -> ~9.2 calls/min).
+_cohere_rate_lock = threading.Lock()
+_cohere_last_call_time = [0.0]
+_COHERE_MIN_INTERVAL = 6.5  # seconds between calls
+
+
+def _rerank_with_rate_limit(cohere_client, **kwargs):
+    max_retries = 4
+    for attempt in range(max_retries):
+        with _cohere_rate_lock:
+            wait = _COHERE_MIN_INTERVAL - (time.time() - _cohere_last_call_time[0])
+            if wait > 0:
+                time.sleep(wait)
+            try:
+                result = cohere_client.rerank(**kwargs)
+                _cohere_last_call_time[0] = time.time()
+                return result
+            except Exception as e:
+                _cohere_last_call_time[0] = time.time()
+                is_rate_limit = "429" in str(e) or "TooManyRequests" in type(e).__name__
+                if is_rate_limit and attempt < max_retries - 1:
+                    time.sleep(15)  # back off hard on an actual 429, then retry
+                    continue
+                raise
 
 
 # --------------------------------------------------------------------------
@@ -197,7 +228,8 @@ def build_agent(client: OpenAI, collection):
             )
 
         docs_text = [d for d, _ in candidate_list]
-        rerank_resp = cohere_client.rerank(
+        rerank_resp = _rerank_with_rate_limit(
+            cohere_client,
             model="rerank-english-v3.0",
             query=query,
             documents=docs_text,
@@ -549,6 +581,11 @@ def main():
         # reduces but doesn't eliminate non-determinism, and the evaluators
         # are themselves LLM calls with the same property). Costs ~5x a
         # single pass in time and OpenAI usage.
+        max_concurrency=2,  # kept low deliberately: a Cohere Trial key is
+        # capped at 10 rerank calls/minute, and high concurrency here is
+        # what caused a live 429 mid-run. The rate-limiter above is the
+        # real safety net, but low concurrency reduces how often it has to
+        # queue/back off, so runs finish faster and more predictably.
     )
     print("\nDone. View results in the LangSmith UI under "
           f"project '{DATASET_NAME}' / dataset '{DATASET_NAME}'.")
