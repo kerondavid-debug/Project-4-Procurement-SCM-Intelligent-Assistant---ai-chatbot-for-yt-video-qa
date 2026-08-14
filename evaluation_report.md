@@ -37,7 +37,6 @@ First observed on a "6 steps in the strategic sourcing flywheel" question. Hybri
 
 **5. Weak-match contamination in retrieval.** Rerank threshold (0.3) and result cap (top-6) were loose enough that low-relevance chunks — e.g. a contract-management chunk bleeding into an unrelated procurement-stages answer — could pass through into context. Raised the rerank threshold to 0.4 and widened the result cap to top-8, so intro/framing chunks aren't crowded out by more keyword-dense but less structurally relevant chunks.
 
-**6. Config drift between app and eval script.** `app.py` (the deployed app) and `langsmith_eval.py` (the eval harness) each independently reimplement the retrieval/routing logic — a known duplication risk, tracked in the eval script's own docstring. Caught and corrected a case where a fix had been applied to one file but not the other, meaning an eval run had silently been testing stale, pre-fix behavior. Both files are now confirmed in sync.
 
 ## Known remaining issues (non-blocking)
 
